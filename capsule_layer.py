@@ -46,10 +46,6 @@ class CapsuleLayer(nn.Module):
             return self.no_routing(x)
 
     def no_routing(self, x):
-        # Flatten input to 1D for fully-connected units.
-        if self.use_routing:
-            x = x.view(x.size(0), -1)
-
         # Get output for each unit.
         # Each will be (batch, channels, height, width).
         u = [self.units[i](x) for i in range(self.num_units)]
