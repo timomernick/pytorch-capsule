@@ -21,8 +21,13 @@ class CapsuleLayer(nn.Module):
         self.use_routing = use_routing
 
         if self.use_routing:
+            # In the paper, the deeper capsule layer(s) with capsule inputs (DigitCaps) use a special routing algorithm
+            # that uses this weight matrix.
             self.W = nn.Parameter(torch.randn(1, in_channels, num_units, unit_size, in_units))
         else:
+            # The first convolutional capsule layer (PrimaryCapsules in the paper) does not perform routing.
+            # Instead, it is composed of several convolutional units, each of which sees the full input.
+            # It is implemented as a normal convolutional layer with a special nonlinearity (squash()).
             def create_conv_unit(unit_idx):
                 unit = nn.Conv2d(in_channels=in_channels,
                                  out_channels=32, # fixme constant
@@ -34,6 +39,7 @@ class CapsuleLayer(nn.Module):
 
     @staticmethod
     def squash(s):
+        # This is equation 1 from the paper.
         mag_sq = torch.sum(s**2, dim=2, keepdim=True)
         mag = torch.sqrt(mag_sq)
         s = (mag_sq / (1.0 + mag_sq)) * (s / mag)
