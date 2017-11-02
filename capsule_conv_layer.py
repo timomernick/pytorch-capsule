@@ -17,7 +17,7 @@ class CapsuleConvLayer(nn.Module):
 
         self.conv0 = nn.Conv2d(in_channels=in_channels,
                                out_channels=out_channels,
-                               kernel_size=9,
+                               kernel_size=9, # fixme constant
                                stride=1)
 
         self.relu = nn.ReLU(inplace=True)

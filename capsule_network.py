@@ -42,15 +42,17 @@ class CapsuleNetwork(nn.Module):
     def margin_loss(self, input, target, size_average=True):
         batch_size = input.size(0)
 
-        m_plus = 0.9
-        m_minus = 0.1
-
+        # ||vc|| from the paper.
         v_mag = torch.sqrt((input**2).sum(dim=2, keepdim=True))
 
+        # Calculate left and right max() terms from equation 4 in the paper.
         zero = Variable(torch.zeros(1)).cuda()
+        m_plus = 0.9
+        m_minus = 0.1
         max_l = torch.max(m_plus - v_mag, zero).view(batch_size, -1)
         max_r = torch.max(v_mag - m_minus, zero).view(batch_size, -1)
 
+        # This is equation 4 from the paper.
         loss_lambda = 0.5
         T_c = target
         L_c = T_c * max_l + loss_lambda * (1.0 - T_c) * max_r

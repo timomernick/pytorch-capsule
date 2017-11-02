@@ -25,9 +25,9 @@ class CapsuleLayer(nn.Module):
         else:
             def create_conv_unit(unit_idx):
                 unit = nn.Conv2d(in_channels=in_channels,
-                                 out_channels=32,
-                                 kernel_size=9,
-                                 stride=2)
+                                 out_channels=32, # fixme constant
+                                 kernel_size=9, # fixme constant
+                                 stride=2) # fixme constant
                 self.add_module("unit_" + str(unit_idx), unit)
                 return unit
             self.units = [create_conv_unit(i) for i in range(self.num_units)]
