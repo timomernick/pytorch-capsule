@@ -11,6 +11,19 @@ from torchvision import datasets, transforms
 import torch.nn.functional as F
 
 
+class ConvUnit(nn.Module):
+    def __init__(self, in_channels):
+        super(ConvUnit, self).__init__()
+
+        self.conv0 = nn.Conv2d(in_channels=in_channels,
+                               out_channels=32,  # fixme constant
+                               kernel_size=9,  # fixme constant
+                               stride=2,
+                               bias=False)  # fixme constant
+
+    def forward(self, x):
+        return self.conv0(x)
+
 class CapsuleLayer(nn.Module):
     def __init__(self, in_units, in_channels, num_units, unit_size, use_routing):
         super(CapsuleLayer, self).__init__()
@@ -29,10 +42,7 @@ class CapsuleLayer(nn.Module):
             # Instead, it is composed of several convolutional units, each of which sees the full input.
             # It is implemented as a normal convolutional layer with a special nonlinearity (squash()).
             def create_conv_unit(unit_idx):
-                unit = nn.Conv2d(in_channels=in_channels,
-                                 out_channels=32, # fixme constant
-                                 kernel_size=9, # fixme constant
-                                 stride=2) # fixme constant
+                unit = ConvUnit(in_channels=in_channels)
                 self.add_module("unit_" + str(unit_idx), unit)
                 return unit
             self.units = [create_conv_unit(i) for i in range(self.num_units)]

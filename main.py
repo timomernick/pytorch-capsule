@@ -44,14 +44,20 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=test_batch_si
 # Create capsule network.
 #
 
-num_conv_channels = 256
+conv_inputs = 1
+conv_outputs = 256
 num_primary_units = 8
 primary_unit_size = 32 * 6 * 6  # fixme get from conv2d
 output_unit_size = 16
 
-network = CapsuleNetwork(num_conv_channels=num_conv_channels,
+network = CapsuleNetwork(image_width=28,
+                         image_height=28,
+                         image_channels=1,
+                         conv_inputs=conv_inputs,
+                         conv_outputs=conv_outputs,
                          num_primary_units=num_primary_units,
                          primary_unit_size=primary_unit_size,
+                         num_output_units=10, # one for each MNIST digit
                          output_unit_size=output_unit_size).cuda()
 print(network)
 
@@ -78,7 +84,7 @@ def test():
 
         output = network(data)
 
-        test_loss += network.loss(output, target, size_average=False).data[0] # sum up batch loss
+        test_loss += network.loss(data, output, target, size_average=False).data[0] # sum up batch loss
 
         v_mag = torch.sqrt((output**2).sum(dim=2, keepdim=True))
 
@@ -111,7 +117,7 @@ def train(epoch):
 
         output = network(data)
 
-        loss = network.loss(output, target)
+        loss = network.loss(data, output, target)
         loss.backward()
         last_loss = loss.data[0]
 
