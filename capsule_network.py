@@ -54,6 +54,9 @@ class CapsuleNetwork(nn.Module):
         self.reconstruct1 = nn.Linear((reconstruction_size * 2) / 3, (reconstruction_size * 3) / 2)
         self.reconstruct2 = nn.Linear((reconstruction_size * 3) / 2, reconstruction_size)
 
+        self.relu = nn.ReLU(inplace=True)
+        self.sigmoid = nn.Sigmoid()
+
     def forward(self, x):
         return self.digits(self.primary(self.conv1(x)))
 
@@ -98,9 +101,9 @@ class CapsuleNetwork(nn.Module):
 
         # Reconstruct input image.
         masked = masked.view(input.size(0), -1)
-        output = self.reconstruct0(masked)
-        output = self.reconstruct1(output)
-        output = self.reconstruct2(output)
+        output = self.relu(self.reconstruct0(masked))
+        output = self.relu(self.reconstruct1(output))
+        output = self.sigmoid(self.reconstruct2(output))
         output = output.view(-1, self.image_channels, self.image_height, self.image_width)
 
         # Save reconstructed images occasionally.
