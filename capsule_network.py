@@ -96,7 +96,6 @@ class CapsuleNetwork(nn.Module):
         v_max_index = v_max_index.data
 
         # Use just the winning capsule's representation (and zeros for other capsules) to reconstruct input image.
-        masked = Variable(torch.zeros(input.size())).cuda()
         batch_size = input.size(0)
         all_masked = [None] * batch_size
         for batch_idx in range(batch_size):
@@ -110,7 +109,7 @@ class CapsuleNetwork(nn.Module):
             all_masked[batch_idx] = batch_masked
 
         # Stack masked capsules over the batch dimension.
-        all_masked = torch.stack(all_masked, dim=0)
+        masked = torch.stack(all_masked, dim=0)
 
         # Reconstruct input image.
         masked = masked.view(input.size(0), -1)
