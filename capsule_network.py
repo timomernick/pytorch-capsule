@@ -50,9 +50,11 @@ class CapsuleNetwork(nn.Module):
                                    use_routing=True)
 
         reconstruction_size = image_width * image_height * image_channels
-        self.reconstruct0 = nn.Linear(num_output_units*output_unit_size, (reconstruction_size * 2) / 3)
-        self.reconstruct1 = nn.Linear((reconstruction_size * 2) / 3, (reconstruction_size * 3) / 2)
-        self.reconstruct2 = nn.Linear((reconstruction_size * 3) / 2, reconstruction_size)
+        # self.reconstruct0 = nn.Linear(num_output_units*output_unit_size, (reconstruction_size * 2) / 3)
+        # self.reconstruct1 = nn.Linear((reconstruction_size * 2) / 3, (reconstruction_size * 3) / 2)
+        self.reconstruct0 = nn.Linear(output_unit_size, 512)
+        self.reconstruct1 = nn.Linear(512, 1024)
+        self.reconstruct2 = nn.Linear(1024, reconstruction_size)
 
         self.relu = nn.ReLU(inplace=True)
         self.sigmoid = nn.Sigmoid()
@@ -61,7 +63,7 @@ class CapsuleNetwork(nn.Module):
         return self.digits(self.primary(self.conv1(x)))
 
     def loss(self, images, input, target, size_average=True):
-        return self.margin_loss(input, target, size_average) + self.reconstruction_loss(images, input, size_average)
+        return self.margin_loss(input, target, size_average) + self.reconstruction_loss(images, input, target, size_average)
 
     def margin_loss(self, input, target, size_average=True):
         batch_size = input.size(0)
@@ -87,17 +89,15 @@ class CapsuleNetwork(nn.Module):
 
         return L_c
 
-    def reconstruction_loss(self, images, input, size_average=True):
-        # Get the lengths of capsule outputs.
-        v_mag = torch.sqrt((input**2).sum(dim=2))
+    def reconstruction_loss(self, images, input, target, size_average=True):
+        # Use the target to reconstruct input image.
 
-        # Get index of longest capsule output.
-        _, v_max_index = v_mag.max(dim=1)
-        v_max_index = v_max_index.data
-
-        # Use just the winning capsule's representation (and zeros for other capsules) to reconstruct input image.
-        masked = Variable(torch.zeros(input.size())).cuda()
-        masked[:,v_max_index] = input[:,v_max_index]
+        # (batch_size, num_output_units, output_unit_size)
+        input = torch.squeeze(input, 3)
+        # (batch_size, num_output_units, 1)
+        target = torch.unsqueeze(target, 2)
+        # (batch_size, output_unit_size, 1)
+        masked = torch.matmul(input.transpose(2,1), target)
 
         # Reconstruct input image.
         masked = masked.view(input.size(0), -1)
