@@ -46,8 +46,8 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=test_batch_si
 
 conv_inputs = 1
 conv_outputs = 256
-num_primary_units = 8
-primary_unit_size = 32 * 6 * 6  # fixme get from conv2d
+num_primary_units = 32 * 6 * 6
+primary_unit_size = 8  # fixme get from conv2d
 output_unit_size = 16
 
 network = CapsuleNetwork(image_width=28,

@@ -31,6 +31,7 @@ class CapsuleLayer(nn.Module):
         self.in_units = in_units
         self.in_channels = in_channels
         self.num_units = num_units
+        self.unit_size = unit_size
         self.use_routing = use_routing
 
         if self.use_routing:
@@ -45,7 +46,7 @@ class CapsuleLayer(nn.Module):
                 unit = ConvUnit(in_channels=in_channels)
                 self.add_module("unit_" + str(unit_idx), unit)
                 return unit
-            self.units = [create_conv_unit(i) for i in range(self.num_units)]
+            self.units = [create_conv_unit(i) for i in range(self.unit_size)]
 
     @staticmethod
     def squash(s):
@@ -64,13 +65,13 @@ class CapsuleLayer(nn.Module):
     def no_routing(self, x):
         # Get output for each unit.
         # Each will be (batch, channels, height, width).
-        u = [self.units[i](x) for i in range(self.num_units)]
+        u = [self.units[i](x) for i in range(self.unit_size)]
 
-        # Stack all unit outputs (batch, unit, channels, height, width).
+        # Stack all unit outputs (batch, unit_size, channels, height, width).
         u = torch.stack(u, dim=1)
 
-        # Flatten to (batch, unit, output).
-        u = u.view(x.size(0), self.num_units, -1)
+        # Flatten to (batch, unit_size, output).
+        u = u.view(x.size(0), self.unit_size, -1)
 
         # Return squashed outputs.
         return CapsuleLayer.squash(u)

@@ -43,8 +43,8 @@ class CapsuleNetwork(nn.Module):
                                     unit_size=primary_unit_size,
                                     use_routing=False)
 
-        self.digits = CapsuleLayer(in_units=num_primary_units,
-                                   in_channels=primary_unit_size,
+        self.digits = CapsuleLayer(in_units=primary_unit_size,
+                                   in_channels=num_primary_units,
                                    num_units=num_output_units,
                                    unit_size=output_unit_size,
                                    use_routing=True)
