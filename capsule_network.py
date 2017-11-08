@@ -50,9 +50,9 @@ class CapsuleNetwork(nn.Module):
                                    use_routing=True)
 
         reconstruction_size = image_width * image_height * image_channels
-        self.reconstruct0 = nn.Linear(num_output_units*output_unit_size, (reconstruction_size * 2) / 3)
-        self.reconstruct1 = nn.Linear((reconstruction_size * 2) / 3, (reconstruction_size * 3) / 2)
-        self.reconstruct2 = nn.Linear((reconstruction_size * 3) / 2, reconstruction_size)
+        self.reconstruct0 = nn.Linear(num_output_units*output_unit_size, int((reconstruction_size * 2) / 3))
+        self.reconstruct1 = nn.Linear(int((reconstruction_size * 2) / 3), int((reconstruction_size * 3) / 2))
+        self.reconstruct2 = nn.Linear(int((reconstruction_size * 3) / 2), reconstruction_size)
 
         self.relu = nn.ReLU(inplace=True)
         self.sigmoid = nn.Sigmoid()
