@@ -19,7 +19,7 @@ class ConvUnit(nn.Module):
                                out_channels=32,  # fixme constant
                                kernel_size=9,  # fixme constant
                                stride=2,
-                               bias=False)  # fixme constant
+                               bias=True)  # fixme constant
 
     def forward(self, x):
         return self.conv0(x)
@@ -31,6 +31,7 @@ class CapsuleLayer(nn.Module):
         self.in_units = in_units
         self.in_channels = in_channels
         self.num_units = num_units
+        self.unit_size = unit_size
         self.use_routing = use_routing
 
         if self.use_routing:
@@ -45,12 +46,12 @@ class CapsuleLayer(nn.Module):
                 unit = ConvUnit(in_channels=in_channels)
                 self.add_module("unit_" + str(unit_idx), unit)
                 return unit
-            self.units = [create_conv_unit(i) for i in range(self.num_units)]
+            self.units = [create_conv_unit(i) for i in range(self.unit_size)]
 
     @staticmethod
-    def squash(s):
+    def squash(s, dim=2):
         # This is equation 1 from the paper.
-        mag_sq = torch.sum(s**2, dim=2, keepdim=True)
+        mag_sq = torch.sum(s**2, dim, keepdim=True)
         mag = torch.sqrt(mag_sq)
         s = (mag_sq / (1.0 + mag_sq)) * (s / mag)
         return s
@@ -64,16 +65,16 @@ class CapsuleLayer(nn.Module):
     def no_routing(self, x):
         # Get output for each unit.
         # Each will be (batch, channels, height, width).
-        u = [self.units[i](x) for i in range(self.num_units)]
+        u = [self.units[i](x) for i in range(self.unit_size)]
 
-        # Stack all unit outputs (batch, unit, channels, height, width).
+        # Stack all unit outputs (batch, unit_size, channels, height, width).
         u = torch.stack(u, dim=1)
 
-        # Flatten to (batch, unit, output).
-        u = u.view(x.size(0), self.num_units, -1)
+        # Flatten to (batch, unit_size, output).
+        u = u.view(x.size(0), self.unit_size, -1)
 
         # Return squashed outputs.
-        return CapsuleLayer.squash(u)
+        return CapsuleLayer.squash(u, dim=1)
 
     def routing(self, x):
         batch_size = x.size(0)
@@ -84,7 +85,7 @@ class CapsuleLayer(nn.Module):
         # (batch, features, in_units) -> (batch, features, num_units, in_units, 1)
         x = torch.stack([x] * self.num_units, dim=2).unsqueeze(4)
 
-        # (batch, features, in_units, unit_size, num_units)
+        # (batch, features, num_units, unit_size, in_units)
         W = torch.cat([self.W] * batch_size, dim=0)
 
         # Transform inputs by weight matrix.
@@ -99,6 +100,7 @@ class CapsuleLayer(nn.Module):
         for iteration in range(num_iterations):
             # Convert routing logits to softmax.
             # (batch, features, num_units, 1, 1)
+            # fixme: seems apply wrong dimention here. but can't train the network if change it. weird.
             c_ij = F.softmax(b_ij)
             c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
 
@@ -107,6 +109,7 @@ class CapsuleLayer(nn.Module):
             s_j = (c_ij * u_hat).sum(dim=1, keepdim=True)
 
             # (batch_size, 1, num_units, unit_size, 1)
+            # fixme: seems apply wrong dimention here. but can't train the network if change it. weird.
             v_j = CapsuleLayer.squash(s_j)
 
             # (batch_size, features, num_units, unit_size, 1)
