@@ -75,8 +75,8 @@ class CapsuleNetwork(nn.Module):
         zero = Variable(torch.zeros(1)).cuda()
         m_plus = 0.9
         m_minus = 0.1
-        max_l = torch.max(m_plus - v_mag, zero).view(batch_size, -1)
-        max_r = torch.max(v_mag - m_minus, zero).view(batch_size, -1)
+        max_l = torch.max(m_plus - v_mag, zero).view(batch_size, -1) ** 2
+        max_r = torch.max(v_mag - m_minus, zero).view(batch_size, -1) ** 2
 
         # This is equation 4 from the paper.
         loss_lambda = 0.5
@@ -118,11 +118,11 @@ class CapsuleNetwork(nn.Module):
             vutils.save_image(output_image, "reconstruction.png")
         self.reconstructed_image_count += 1
 
-        # The reconstruction loss is the mean squared difference between the input image and reconstructed image.
+        # The reconstruction loss is the sum squared difference between the input image and reconstructed image.
         # Multiplied by a small number so it doesn't dominate the margin (class) loss.
         error = (output - images).view(output.size(0), -1)
         error = error**2
-        error = torch.mean(error, dim=1) * 0.0005
+        error = torch.sum(error, dim=1) * 0.0005
 
         # Average over batch
         if size_average:
