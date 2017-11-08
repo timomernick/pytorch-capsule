@@ -18,8 +18,8 @@ class ConvUnit(nn.Module):
         self.conv0 = nn.Conv2d(in_channels=in_channels,
                                out_channels=32,  # fixme constant
                                kernel_size=9,  # fixme constant
-                               stride=2,
-                               bias=False)  # fixme constant
+                               stride=2, # fixme constant
+                               bias=True)
 
     def forward(self, x):
         return self.conv0(x)
