@@ -43,16 +43,18 @@ class CapsuleNetwork(nn.Module):
                                     unit_size=primary_unit_size,
                                     use_routing=False)
 
-        self.digits = CapsuleLayer(in_units=num_primary_units,
-                                   in_channels=primary_unit_size,
+        self.digits = CapsuleLayer(in_units=primary_unit_size,
+                                   in_channels=num_primary_units,
                                    num_units=num_output_units,
                                    unit_size=output_unit_size,
                                    use_routing=True)
 
         reconstruction_size = image_width * image_height * image_channels
-        self.reconstruct0 = nn.Linear(num_output_units*output_unit_size, (reconstruction_size * 2) / 3)
-        self.reconstruct1 = nn.Linear((reconstruction_size * 2) / 3, (reconstruction_size * 3) / 2)
-        self.reconstruct2 = nn.Linear((reconstruction_size * 3) / 2, reconstruction_size)
+        # self.reconstruct0 = nn.Linear(num_output_units*output_unit_size, (reconstruction_size * 2) / 3)
+        # self.reconstruct1 = nn.Linear((reconstruction_size * 2) / 3, (reconstruction_size * 3) / 2)
+        self.reconstruct0 = nn.Linear(output_unit_size, 512)
+        self.reconstruct1 = nn.Linear(512, 1024)
+        self.reconstruct2 = nn.Linear(1024, reconstruction_size)
 
         self.relu = nn.ReLU(inplace=True)
         self.sigmoid = nn.Sigmoid()
@@ -61,7 +63,7 @@ class CapsuleNetwork(nn.Module):
         return self.digits(self.primary(self.conv1(x)))
 
     def loss(self, images, input, target, size_average=True):
-        return self.margin_loss(input, target, size_average) + self.reconstruction_loss(images, input, size_average)
+        return self.margin_loss(input, target, size_average) + self.reconstruction_loss(images, input, target, size_average)
 
     def margin_loss(self, input, target, size_average=True):
         batch_size = input.size(0)
@@ -73,8 +75,8 @@ class CapsuleNetwork(nn.Module):
         zero = Variable(torch.zeros(1)).cuda()
         m_plus = 0.9
         m_minus = 0.1
-        max_l = torch.max(m_plus - v_mag, zero).view(batch_size, -1)
-        max_r = torch.max(v_mag - m_minus, zero).view(batch_size, -1)
+        max_l = torch.max(m_plus - v_mag, zero).view(batch_size, -1) ** 2
+        max_r = torch.max(v_mag - m_minus, zero).view(batch_size, -1) ** 2
 
         # This is equation 4 from the paper.
         loss_lambda = 0.5
@@ -87,29 +89,14 @@ class CapsuleNetwork(nn.Module):
 
         return L_c
 
-    def reconstruction_loss(self, images, input, size_average=True):
-        # Get the lengths of capsule outputs.
-        v_mag = torch.sqrt((input**2).sum(dim=2))
-
-        # Get index of longest capsule output.
-        _, v_max_index = v_mag.max(dim=1)
-        v_max_index = v_max_index.data
-
-        # Use just the winning capsule's representation (and zeros for other capsules) to reconstruct input image.
-        batch_size = input.size(0)
-        all_masked = [None] * batch_size
-        for batch_idx in range(batch_size):
-            # Get one sample from the batch.
-            input_batch = input[batch_idx]
-
-            # Copy only the maximum capsule index from this batch sample.
-            # This masks out (leaves as zero) the other capsules in this sample.
-            batch_masked = Variable(torch.zeros(input_batch.size())).cuda()
-            batch_masked[v_max_index[batch_idx]] = input_batch[v_max_index[batch_idx]]
-            all_masked[batch_idx] = batch_masked
-
-        # Stack masked capsules over the batch dimension.
-        masked = torch.stack(all_masked, dim=0)
+    def reconstruction_loss(self, images, input, target, size_average=True):
+        # Use the target to reconstruct input image.
+        # (batch_size, num_output_units, output_unit_size)
+        input = torch.squeeze(input, 3)
+        # (batch_size, num_output_units, 1)
+        target = torch.unsqueeze(target, 2)
+        # (batch_size, output_unit_size, 1)
+        masked = torch.matmul(input.transpose(2,1), target)
 
         # Reconstruct input image.
         masked = masked.view(input.size(0), -1)
@@ -130,11 +117,11 @@ class CapsuleNetwork(nn.Module):
             vutils.save_image(output_image, "reconstruction.png")
         self.reconstructed_image_count += 1
 
-        # The reconstruction loss is the mean squared difference between the input image and reconstructed image.
+        # The reconstruction loss is the sum squared difference between the input image and reconstructed image.
         # Multiplied by a small number so it doesn't dominate the margin (class) loss.
         error = (output - images).view(output.size(0), -1)
         error = error**2
-        error = torch.mean(error, dim=1) * 0.0005
+        error = torch.sum(error, dim=1) * 0.0005
 
         # Average over batch
         if size_average:
