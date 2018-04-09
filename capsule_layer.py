@@ -36,7 +36,9 @@ class CapsuleLayer(nn.Module):
         if self.use_routing:
             # In the paper, the deeper capsule layer(s) with capsule inputs (DigitCaps) use a special routing algorithm
             # that uses this weight matrix.
-            self.W = nn.Parameter(torch.randn(1, in_channels, num_units, unit_size, in_units))
+            self.W = nn.Parameter(torch.normal(
+                means=torch.zeros(1, in_channels, num_units,unit_size, in_units),
+                std=0.01))
         else:
             # The first convolutional capsule layer (PrimaryCapsules in the paper) does not perform routing.
             # Instead, it is composed of several convolutional units, each of which sees the full input.
@@ -99,7 +101,7 @@ class CapsuleLayer(nn.Module):
         for iteration in range(num_iterations):
             # Convert routing logits to softmax.
             # (batch, features, num_units, 1, 1)
-            c_ij = F.softmax(b_ij)
+            c_ij = F.softmax(b_ij, dim=2)
             c_ij = torch.cat([c_ij] * batch_size, dim=0).unsqueeze(4)
 
             # Apply routing (c_ij) to weighted inputs (u_hat).
