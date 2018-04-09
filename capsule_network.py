@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 from capsule_conv_layer import CapsuleConvLayer
 from capsule_layer import CapsuleLayer
-
+from capsule_reconstrution_layer import CapsuleReconstrutionLayer
 
 class CapsuleNetwork(nn.Module):
     def __init__(self,
@@ -50,13 +50,9 @@ class CapsuleNetwork(nn.Module):
                                    use_routing=True)
 
         reconstruction_size = image_width * image_height * image_channels
-        self.reconstruct0 = nn.Linear(num_output_units*output_unit_size, int((reconstruction_size * 2) / 3))
-        self.reconstruct1 = nn.Linear(int((reconstruction_size * 2) / 3), int((reconstruction_size * 3) / 2))
-        self.reconstruct2 = nn.Linear(int((reconstruction_size * 3) / 2), reconstruction_size)
-
-        self.relu = nn.ReLU(inplace=True)
-        self.sigmoid = nn.Sigmoid()
-
+        self.reconstruct = CapsuleReconstrutionLayer(num_output_units,
+                                                     output_unit_size,
+                                                     reconstruction_size)
     def forward(self, x):
         return self.digits(self.primary(self.conv1(x)))
 
@@ -110,14 +106,12 @@ class CapsuleNetwork(nn.Module):
 
         # Stack masked capsules over the batch dimension.
         masked = torch.stack(all_masked, dim=0)
-
+        
         # Reconstruct input image.
         masked = masked.view(input.size(0), -1)
-        output = self.relu(self.reconstruct0(masked))
-        output = self.relu(self.reconstruct1(output))
-        output = self.sigmoid(self.reconstruct2(output))
+        output = self.reconstruct(masked)
         output = output.view(-1, self.image_channels, self.image_height, self.image_width)
-
+        
         # Save reconstructed images occasionally.
         if self.reconstructed_image_count % 10 == 0:
             if output.size(1) == 2:
@@ -141,3 +135,4 @@ class CapsuleNetwork(nn.Module):
             error = error.mean()
 
         return error
+    
